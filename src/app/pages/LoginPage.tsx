@@ -94,23 +94,6 @@ export default function LoginPage() {
             {loading ? "Memproses..." : "Masuk"}
           </button>
         </form>
-
-        {/* Demo Credentials */}
-        <div className="mt-6 p-4 bg-white/5 rounded-xl border border-white/10 space-y-2">
-          <p className="text-white/50 text-xs text-center mb-3">Demo Akun:</p>
-          <div className="flex items-center gap-2 p-2 bg-[#FBAA31]/10 rounded-lg">
-            <span className="text-xs px-2 py-0.5 rounded-full bg-[#FBAA31]/20 text-[#FBAA31] font-semibold">Owner</span>
-            <p className="text-white/70 text-xs flex-1">
-              <span className="text-[#FDE77A]">ishaq@cemil.in</span> / <span className="text-[#FDE77A]">owner123</span>
-            </p>
-          </div>
-          <div className="flex items-center gap-2 p-2 bg-purple-500/10 rounded-lg">
-            <span className="text-xs px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-400 font-semibold">Admin</span>
-            <p className="text-white/70 text-xs flex-1">
-              <span className="text-purple-300">rofi@cemil.in</span> / <span className="text-purple-300">admin123</span>
-            </p>
-          </div>
-        </div>
       </div>
 
       {/* Footer */}
