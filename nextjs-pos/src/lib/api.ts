@@ -28,6 +28,11 @@ export const api = {
       }),
     logout: () => request("/api/auth/logout", { method: "POST" }),
     me: () => request("/api/auth/me"),
+    restore: (userId: string) =>
+      request("/api/auth/restore", {
+        method: "POST",
+        body: JSON.stringify({ userId }),
+      }),
   },
 
   // ============ PRODUK ============

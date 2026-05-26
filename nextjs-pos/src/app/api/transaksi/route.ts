@@ -51,7 +51,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { items, method, buyer_name } = body;
+    const { items, method, buyer_name, status_override } = body;
 
     if (!items || items.length === 0) {
       return NextResponse.json(
@@ -73,6 +73,9 @@ export async function POST(request: Request) {
       minute: "2-digit",
     });
 
+    // Use status_override if provided, otherwise default logic
+    const status = status_override || (method === "tunai" ? "lunas" : "pending");
+
     // Create transaction
     const { data: trx, error: trxError } = await supabase
       .from("transaksi")
@@ -80,7 +83,7 @@ export async function POST(request: Request) {
         buyer_name: buyer_name || "Umum",
         total,
         method,
-        status: method === "tunai" ? "lunas" : "pending",
+        status,
         date,
         time,
       })

@@ -24,6 +24,7 @@ export default function KasirPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [buyerName, setBuyerName] = useState("");
   const [showQrisModal, setShowQrisModal] = useState(false);
+  const [showTunaiConfirm, setShowTunaiConfirm] = useState(false);
   const [pendingTrxId, setPendingTrxId] = useState<string | null>(null);
   const [showReceipt, setShowReceipt] = useState(false);
   const [lastTrx, setLastTrx] = useState<Transaction | null>(null);
@@ -70,12 +71,14 @@ export default function KasirPage() {
   const handlePay = async (method: "tunai" | "qris") => {
     if (cart.length === 0) return;
     const items = cart.map((c) => ({ product_id: c.productId, product_name: c.productName, quantity: c.quantity, price: c.price, subtotal: c.price * c.quantity }));
-    const res = await api.transaksi.create({ items, method, buyer_name: buyerName || "Umum" });
+    // Tunai now also creates as pending first, confirmed via modal
+    const res = await api.transaksi.create({ items, method, buyer_name: buyerName || "Umum", status_override: "pending" });
     if (res.success) {
       const trx = res.data as Transaction;
       setLastTrx(trx); setLastTotal(total);
-      if (method === "qris") { setPendingTrxId(trx.id); setShowQrisModal(true); }
-      else { setShowReceipt(true); toast.success("Transaksi berhasil!"); }
+      setPendingTrxId(trx.id);
+      if (method === "qris") { setShowQrisModal(true); }
+      else { setShowTunaiConfirm(true); }
       setCart([]); setBuyerName("");
       const prodRes = await api.produk.list();
       if (prodRes.success) setProducts(prodRes.data as Product[]);
@@ -87,6 +90,25 @@ export default function KasirPage() {
       await api.transaksi.update(pendingTrxId, { status: "lunas" });
       setPendingTrxId(null); setShowQrisModal(false); setShowReceipt(true);
       toast.success("Pembayaran QRIS dikonfirmasi!");
+    }
+  };
+
+  const handleConfirmTunai = async () => {
+    if (pendingTrxId) {
+      await api.transaksi.update(pendingTrxId, { status: "lunas" });
+      setPendingTrxId(null); setShowTunaiConfirm(false); setShowReceipt(true);
+      toast.success("Pembayaran tunai dikonfirmasi!");
+    }
+  };
+
+  const handleCancelTunai = async () => {
+    if (pendingTrxId) {
+      // Delete the pending transaction and restore stock
+      await api.transaksi.delete(pendingTrxId);
+      setPendingTrxId(null); setShowTunaiConfirm(false);
+      toast.info("Transaksi dibatalkan");
+      const prodRes = await api.produk.list();
+      if (prodRes.success) setProducts(prodRes.data as Product[]);
     }
   };
 
@@ -197,6 +219,35 @@ export default function KasirPage() {
             <div className="flex gap-2">
               <button onClick={() => setShowReceipt(false)} className="flex-1 py-3 bg-[#e5e5e5] font-semibold rounded-xl text-sm">Tutup</button>
               <button onClick={handlePrint} className="flex-1 py-3 bg-gradient-to-r from-[#FBAA31] to-[#E87428] text-white font-semibold rounded-xl flex items-center justify-center gap-2 text-sm"><Printer className="w-4 h-4" />Cetak</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Konfirmasi Tunai */}
+      {showTunaiConfirm && lastTrx && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-3xl p-8 max-w-md w-full shadow-2xl text-center animate-scaleIn">
+            <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-green-500 to-green-600 flex items-center justify-center mx-auto mb-4">
+              <Wallet className="w-8 h-8 text-white" />
+            </div>
+            <h3 className="text-2xl font-bold mb-1">Pembayaran Tunai</h3>
+            <p className="text-sm text-[#737373] mb-4">Pembeli: <span className="font-semibold text-black">{lastTrx?.buyer_name || "Umum"}</span></p>
+            <div className="bg-green-50 rounded-2xl p-6 mb-4 border border-green-200">
+              <p className="text-sm text-[#737373] mb-1">Total yang harus dibayar</p>
+              <p className="text-3xl font-bold text-green-600">Rp {lastTotal.toLocaleString("id-ID")}</p>
+            </div>
+            <div className="bg-[#e5e5e5]/30 rounded-xl p-3 mb-6">
+              <p className="text-xs text-[#737373]">📋 Detail: {lastTrx.items?.map((i) => `${i.quantity}x ${i.product_name}`).join(", ")}</p>
+            </div>
+            <p className="text-sm text-[#737373] mb-6">Pastikan uang tunai sudah diterima sebelum mengkonfirmasi.</p>
+            <div className="flex gap-3">
+              <button onClick={handleCancelTunai} className="flex-1 py-3 bg-[#e5e5e5] font-semibold rounded-xl flex items-center justify-center gap-2">
+                <X className="w-4 h-4" />Batal
+              </button>
+              <button onClick={handleConfirmTunai} className="flex-1 py-3 bg-gradient-to-r from-green-500 to-green-600 text-white font-semibold rounded-xl shadow-lg flex items-center justify-center gap-2">
+                <Check className="w-4 h-4" />Konfirmasi Lunas
+              </button>
             </div>
           </div>
         </div>

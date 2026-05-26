@@ -2,7 +2,6 @@ import { createBrowserRouter } from "react-router";
 import { AuthLayout } from "./layouts/AuthLayout";
 import { DashboardLayout } from "./layouts/DashboardLayout";
 import LoginPage from "./pages/LoginPage";
-import AdminLoginPage from "./pages/AdminLoginPage";
 import DashboardPage from "./pages/DashboardPage";
 import KasirPage from "./pages/KasirPage";
 import ProdukPage from "./pages/ProdukPage";
@@ -22,14 +21,6 @@ export const router = createBrowserRouter([
     ],
   },
   {
-    // Hidden admin login route
-    path: "/admin-login",
-    Component: AuthLayout,
-    children: [
-      { index: true, Component: AdminLoginPage },
-    ],
-  },
-  {
     path: "/dashboard",
     Component: DashboardLayout,
     children: [
@@ -45,3 +36,4 @@ export const router = createBrowserRouter([
     ],
   },
 ]);
+

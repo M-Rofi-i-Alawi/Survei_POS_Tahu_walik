@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { TrendingUp, TrendingDown, Calendar, Download } from "lucide-react";
+import { TrendingUp, TrendingDown } from "lucide-react";
 import { BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts";
 import { useApp } from "../context/AppContext";
 
@@ -16,9 +16,16 @@ export default function LaporanPage() {
   const todayExpenses = useMemo(() => expenses.filter((e) => e.date === today).reduce((s, e) => s + e.amount, 0), [expenses, today]);
   const todayProfit = todayTotal - todayExpenses;
 
-  const allTotalIncome = transactions.filter((t) => t.status === "lunas").reduce((s, t) => s + t.total, 0);
+  const allLunas = transactions.filter((t) => t.status === "lunas");
+  const allTotalIncome = allLunas.reduce((s, t) => s + t.total, 0);
+  const allTunai = allLunas.filter((t) => t.method === "tunai").reduce((s, t) => s + t.total, 0);
+  const allQris = allLunas.filter((t) => t.method === "qris").reduce((s, t) => s + t.total, 0);
   const allTotalExpense = expenses.reduce((s, e) => s + e.amount, 0);
   const allProfit = allTotalIncome - allTotalExpense;
+
+  // Period-aware values
+  const displayTunai = period === "daily" ? todayTunai : allTunai;
+  const displayQris = period === "daily" ? todayQris : allQris;
 
   // Chart data: Tunai vs QRIS breakdown
   const paymentBreakdown = [
@@ -63,11 +70,11 @@ export default function LaporanPage() {
         </div>
         <div className="bg-white rounded-2xl p-5 border border-border">
           <div className="flex items-center gap-2 mb-2"><span className="text-sm text-muted-foreground">💵 Tunai</span></div>
-          <p className="text-2xl font-bold text-green-600">Rp {todayTunai.toLocaleString("id-ID")}</p>
+          <p className="text-2xl font-bold text-green-600">Rp {displayTunai.toLocaleString("id-ID")}</p>
         </div>
         <div className="bg-white rounded-2xl p-5 border border-border">
           <div className="flex items-center gap-2 mb-2"><span className="text-sm text-muted-foreground">📱 QRIS</span></div>
-          <p className="text-2xl font-bold text-[#E87428]">Rp {todayQris.toLocaleString("id-ID")}</p>
+          <p className="text-2xl font-bold text-[#E87428]">Rp {displayQris.toLocaleString("id-ID")}</p>
         </div>
         <div className={`rounded-2xl p-5 ${(period === "daily" ? todayProfit : allProfit) >= 0 ? "bg-green-50 border border-green-200" : "bg-red-50 border border-red-200"}`}>
           <div className="flex items-center gap-2 mb-2">

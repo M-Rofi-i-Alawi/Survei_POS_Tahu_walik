@@ -5,7 +5,7 @@ import { Toaster } from "sonner";
 export const metadata: Metadata = {
   title: "Cemil.in - Pos Tahu Walik",
   description: "Sistem POS (Point of Sale) untuk usaha Tahu Walik milik Ishaq Abdul Zafar. Dibangun dengan Next.js dan Supabase.",
-  keywords: ["POS", "Tahu Walik", "Kasir", "Cemil.in"],
+  keywords: ["POS", "Tahu Walik", "Kasir"],
 };
 
 export default function RootLayout({

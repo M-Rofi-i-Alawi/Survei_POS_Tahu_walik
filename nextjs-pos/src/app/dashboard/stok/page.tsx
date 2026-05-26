@@ -40,7 +40,7 @@ export default function StokPage() {
           return (
             <div key={product.id} className={`bg-white rounded-2xl p-6 border transition-all ${sisa <= 0 && product.stok_harian > 0 ? "border-red-200 bg-red-50/30" : "border-[#e5e5e5]"}`}>
               <div className="flex items-center gap-3 mb-4">
-                <div className="text-4xl">{product.image}</div>
+                {product.photo_url ? <img src={product.photo_url} alt={product.name} className="w-14 h-14 rounded-xl object-cover" /> : <div className="text-4xl">{product.image}</div>}
                 <div><h3 className="font-bold">{product.name}</h3><p className="text-sm text-[#E87428] font-semibold">Rp {product.price.toLocaleString("id-ID")}/pcs</p></div>
                 {showSuccess === product.id && <div className="ml-auto flex items-center gap-1 px-2 py-1 bg-green-50 text-green-600 rounded-lg text-xs font-medium"><Check className="w-3 h-3" />Tersimpan</div>}
               </div>

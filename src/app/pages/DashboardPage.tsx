@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { TrendingUp, ShoppingCart, Package, DollarSign, AlertTriangle, ArrowUpRight } from "lucide-react";
+import { TrendingUp, ShoppingCart, Package, DollarSign, AlertTriangle } from "lucide-react";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { useApp } from "../context/AppContext";
 

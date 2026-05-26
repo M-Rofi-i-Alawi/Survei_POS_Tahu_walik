@@ -1,39 +1,39 @@
 import { createClient } from "@/lib/supabase/server";
 import { NextRequest, NextResponse } from "next/server";
 
-// POST /api/auth/admin-login - Login Admin only
+// POST /api/auth/restore - Restore session from localStorage user ID
 export async function POST(request: NextRequest) {
   try {
-    const { email, password } = await request.json();
+    const { userId } = await request.json();
 
-    if (!email || !password) {
+    if (!userId) {
       return NextResponse.json(
-        { success: false, error: "Email dan password wajib diisi" },
+        { success: false, error: "User ID diperlukan" },
         { status: 400 }
       );
     }
 
     const supabase = await createClient();
 
+    // Verify user still exists in database
     const { data: user, error } = await supabase
       .from("users")
       .select("id, name, email, role")
-      .eq("email", email)
-      .eq("password", password)
-      .eq("role", "admin")
+      .eq("id", userId)
       .single();
 
     if (error || !user) {
       return NextResponse.json(
-        { success: false, error: "Akses ditolak. Akun admin tidak ditemukan." },
+        { success: false, error: "User tidak ditemukan" },
         { status: 401 }
       );
     }
 
+    // Re-set the session cookie
     const response = NextResponse.json({
       success: true,
       data: user,
-      message: "Login admin berhasil",
+      message: "Session restored",
     });
 
     response.cookies.set("pos_session", JSON.stringify(user), {
@@ -47,7 +47,7 @@ export async function POST(request: NextRequest) {
     return response;
   } catch {
     return NextResponse.json(
-      { success: false, error: "Terjadi kesalahan server" },
+      { success: false, error: "Gagal restore session" },
       { status: 500 }
     );
   }

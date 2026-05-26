@@ -22,8 +22,10 @@ export default function LoginPage() {
       const res = await api.auth.login(email, password);
 
       if (res.success) {
-        const user = res.data as { role: string };
+        const user = res.data as { id: string; role: string };
         if (user.role === "owner") {
+          // Save to localStorage for session persistence
+          try { localStorage.setItem("pos_user", JSON.stringify(user)); } catch {}
           toast.success("Login berhasil!");
           router.push("/dashboard");
         } else {

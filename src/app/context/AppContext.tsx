@@ -236,21 +236,25 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   // Check stok habis and create notifications
   useEffect(() => {
+    const today = getToday();
     products.forEach((p) => {
       const sisa = p.stokHarian - p.stokTerjual;
-      const existingNotif = notifications.find(
-        (n) => n.productId === p.id && n.type === "stok_habis" && n.timestamp.startsWith(getToday())
-      );
-      if (sisa <= 0 && p.stokHarian > 0 && !existingNotif) {
-        const newNotif: Notification = {
-          id: generateId("NTF"),
-          type: "stok_habis",
-          message: `Stok ${p.name} Habis! Jualan hari ini selesai 🎉`,
-          productId: p.id,
-          timestamp: new Date().toISOString(),
-          read: false,
-        };
-        setNotifications((prev) => [newNotif, ...prev]);
+      if (sisa <= 0 && p.stokHarian > 0) {
+        setNotifications((prev) => {
+          const existingNotif = prev.find(
+            (n) => n.productId === p.id && n.type === "stok_habis" && n.timestamp.startsWith(today)
+          );
+          if (existingNotif) return prev;
+          const newNotif: Notification = {
+            id: generateId("NTF"),
+            type: "stok_habis",
+            message: `Stok ${p.name} Habis! Jualan hari ini selesai 🎉`,
+            productId: p.id,
+            timestamp: new Date().toISOString(),
+            read: false,
+          };
+          return [newNotif, ...prev];
+        });
       }
     });
   }, [products]);

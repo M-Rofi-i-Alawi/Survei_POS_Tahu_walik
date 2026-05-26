@@ -43,13 +43,30 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const [showNotifs, setShowNotifs] = useState(false);
   const [loading, setLoading] = useState(true);
 
-  // Fetch current user
+  // Fetch current user with localStorage fallback
   useEffect(() => {
     const fetchUser = async () => {
       const res = await api.auth.me();
       if (res.success) {
         setUser(res.data as AppUser);
+        // Keep localStorage in sync
+        try { localStorage.setItem("pos_user", JSON.stringify(res.data)); } catch {}
       } else {
+        // Cookie lost — try to restore from localStorage
+        try {
+          const stored = localStorage.getItem("pos_user");
+          if (stored) {
+            const parsed = JSON.parse(stored) as AppUser;
+            const restoreRes = await api.auth.restore(parsed.id);
+            if (restoreRes.success) {
+              setUser(restoreRes.data as AppUser);
+              setLoading(false);
+              return;
+            }
+          }
+        } catch {}
+        // Both failed — go to login
+        localStorage.removeItem("pos_user");
         router.push("/");
       }
       setLoading(false);
@@ -84,6 +101,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   const handleLogout = async () => {
     await api.auth.logout();
+    try { localStorage.removeItem("pos_user"); } catch {}
     router.push("/");
   };
 
