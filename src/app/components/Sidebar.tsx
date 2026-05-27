@@ -35,7 +35,7 @@ export function Sidebar({ isOpen, onToggle }: SidebarProps) {
     { path: "/dashboard/transaksi", icon: Receipt, label: "Transaksi", show: true },
     { path: "/dashboard/pengeluaran", icon: Wallet, label: "Pengeluaran", show: isOwner },
     { path: "/dashboard/laporan", icon: BarChart3, label: "Laporan", show: isOwner },
-    { path: "/dashboard/pengguna", icon: UserCog, label: "Pengguna", show: isOwner },
+    { path: "/dashboard/pengguna", icon: UserCog, label: "Pengguna", show: true },
     { path: "/dashboard/pengaturan", icon: Settings, label: "Pengaturan", show: true },
   ].filter((item) => item.show);
 

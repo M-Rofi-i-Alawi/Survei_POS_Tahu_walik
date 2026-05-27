@@ -2,9 +2,11 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { ShoppingCart, Mail, Lock } from "lucide-react";
+import { Mail, Lock } from "lucide-react";
 import { toast } from "sonner";
 import { api } from "@/lib/api";
+import logo from "@/assets/logo.png";
+
 
 export default function LoginPage() {
   const router = useRouter();
@@ -48,8 +50,8 @@ export default function LoginPage() {
       <div className="w-full max-w-md">
         <div className="bg-white/10 backdrop-blur-lg rounded-3xl p-8 border border-white/20 shadow-2xl animate-scaleIn">
           <div className="flex flex-col items-center mb-8">
-            <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-[#FBAA31] to-[#E87428] flex items-center justify-center mb-4 shadow-lg shadow-[#FBAA31]/30">
-              <ShoppingCart className="w-8 h-8 text-white" />
+            <div className="logo">
+              <img src={logo.src} alt="Cemil.in Logo"/>
             </div>
             <h1 className="text-3xl font-bold text-white mb-2">Cemil.in</h1>
             <p className="text-white/70 text-sm">Pos Tahu Walik</p>
