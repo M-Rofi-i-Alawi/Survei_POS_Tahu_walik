@@ -23,14 +23,31 @@ export default function LaporanPage() {
   const allTotalExpense = expenses.reduce((s, e) => s + e.amount, 0);
   const allProfit = allTotalIncome - allTotalExpense;
 
-  // Period-aware values
-  const displayTunai = period === "daily" ? todayTunai : allTunai;
-  const displayQris = period === "daily" ? todayQris : allQris;
+  // Weekly (7 days) calculations
+  const weeklyData = useMemo(() => {
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 6);
+    const startDate = sevenDaysAgo.toISOString().slice(0, 10);
+    const weeklyTrx = allLunas.filter((t) => t.date >= startDate);
+    const weeklyTunai = weeklyTrx.filter((t) => t.method === "tunai").reduce((s, t) => s + t.total, 0);
+    const weeklyQris = weeklyTrx.filter((t) => t.method === "qris").reduce((s, t) => s + t.total, 0);
+    const weeklyTotal = weeklyTunai + weeklyQris;
+    const weeklyExpenses = expenses.filter((e) => e.date >= startDate).reduce((s, e) => s + e.amount, 0);
+    const weeklyProfit = weeklyTotal - weeklyExpenses;
+    return { weeklyTunai, weeklyQris, weeklyTotal, weeklyExpenses, weeklyProfit };
+  }, [allLunas, expenses]);
 
-  // Chart data: Tunai vs QRIS breakdown
+  // Period-aware values
+  const displayTunai = period === "daily" ? todayTunai : period === "weekly" ? weeklyData.weeklyTunai : allTunai;
+  const displayQris = period === "daily" ? todayQris : period === "weekly" ? weeklyData.weeklyQris : allQris;
+  const displayTotal = period === "daily" ? todayTotal : period === "weekly" ? weeklyData.weeklyTotal : allTotalIncome;
+  const displayExpenses = period === "daily" ? todayExpenses : period === "weekly" ? weeklyData.weeklyExpenses : allTotalExpense;
+  const displayProfit = period === "daily" ? todayProfit : period === "weekly" ? weeklyData.weeklyProfit : allProfit;
+
+  // Chart data: Tunai vs QRIS breakdown (period-aware)
   const paymentBreakdown = [
-    { name: "Tunai", value: todayTunai, color: "#22c55e" },
-    { name: "QRIS", value: todayQris, color: "#FBAA31" },
+    { name: "Tunai", value: displayTunai, color: "#22c55e" },
+    { name: "QRIS", value: displayQris, color: "#FBAA31" },
   ];
 
   // Last 7 days data
@@ -66,7 +83,7 @@ export default function LaporanPage() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="bg-gradient-to-br from-[#FBAA31] to-[#E87428] rounded-2xl p-5 text-white">
           <div className="flex items-center gap-2 mb-2"><TrendingUp className="w-5 h-5 opacity-80" /><span className="text-sm opacity-80">Total Pemasukan</span></div>
-          <p className="text-2xl font-bold">Rp {(period === "daily" ? todayTotal : allTotalIncome).toLocaleString("id-ID")}</p>
+          <p className="text-2xl font-bold">Rp {displayTotal.toLocaleString("id-ID")}</p>
         </div>
         <div className="bg-white rounded-2xl p-5 border border-border">
           <div className="flex items-center gap-2 mb-2"><span className="text-sm text-muted-foreground">💵 Tunai</span></div>
@@ -76,15 +93,15 @@ export default function LaporanPage() {
           <div className="flex items-center gap-2 mb-2"><span className="text-sm text-muted-foreground">📱 QRIS</span></div>
           <p className="text-2xl font-bold text-[#E87428]">Rp {displayQris.toLocaleString("id-ID")}</p>
         </div>
-        <div className={`rounded-2xl p-5 ${(period === "daily" ? todayProfit : allProfit) >= 0 ? "bg-green-50 border border-green-200" : "bg-red-50 border border-red-200"}`}>
+        <div className={`rounded-2xl p-5 ${displayProfit >= 0 ? "bg-green-50 border border-green-200" : "bg-red-50 border border-red-200"}`}>
           <div className="flex items-center gap-2 mb-2">
-            {(period === "daily" ? todayProfit : allProfit) >= 0 ? <TrendingUp className="w-5 h-5 text-green-600" /> : <TrendingDown className="w-5 h-5 text-red-500" />}
+            {displayProfit >= 0 ? <TrendingUp className="w-5 h-5 text-green-600" /> : <TrendingDown className="w-5 h-5 text-red-500" />}
             <span className="text-sm text-muted-foreground">Laba/Rugi</span>
           </div>
-          <p className={`text-2xl font-bold ${(period === "daily" ? todayProfit : allProfit) >= 0 ? "text-green-600" : "text-red-500"}`}>
-            Rp {Math.abs(period === "daily" ? todayProfit : allProfit).toLocaleString("id-ID")}
+          <p className={`text-2xl font-bold ${displayProfit >= 0 ? "text-green-600" : "text-red-500"}`}>
+            Rp {Math.abs(displayProfit).toLocaleString("id-ID")}
           </p>
-          <p className="text-xs text-muted-foreground mt-1">Pengeluaran: Rp {(period === "daily" ? todayExpenses : allTotalExpense).toLocaleString("id-ID")}</p>
+          <p className="text-xs text-muted-foreground mt-1">Pengeluaran: Rp {displayExpenses.toLocaleString("id-ID")}</p>
         </div>
       </div>
 
@@ -106,8 +123,8 @@ export default function LaporanPage() {
 
         {/* Payment Breakdown */}
         <div className="bg-white rounded-2xl p-6 border border-border">
-          <h3 className="font-bold text-lg mb-4">Breakdown Tunai vs QRIS (Hari Ini)</h3>
-          {todayTotal > 0 ? (
+          <h3 className="font-bold text-lg mb-4">Breakdown Tunai vs QRIS ({period === "daily" ? "Hari Ini" : period === "weekly" ? "7 Hari" : "Semua"})</h3>
+          {(displayTunai + displayQris) > 0 ? (
             <ResponsiveContainer width="100%" height={250}>
               <PieChart>
                 <Pie data={paymentBreakdown} cx="50%" cy="50%" outerRadius={90} dataKey="value" label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}>
@@ -119,7 +136,7 @@ export default function LaporanPage() {
             </ResponsiveContainer>
           ) : (
             <div className="h-[250px] flex items-center justify-center text-muted-foreground">
-              <p className="text-sm">Belum ada transaksi hari ini</p>
+              <p className="text-sm">{period === "daily" ? "Belum ada transaksi hari ini" : "Belum ada data transaksi"}</p>
             </div>
           )}
         </div>
@@ -131,15 +148,15 @@ export default function LaporanPage() {
         <div className="space-y-3">
           <div className="flex justify-between p-3 bg-green-50 rounded-xl">
             <span className="font-medium text-green-700">Total Pemasukan</span>
-            <span className="font-bold text-green-700">+ Rp {(period === "daily" ? todayTotal : allTotalIncome).toLocaleString("id-ID")}</span>
+            <span className="font-bold text-green-700">+ Rp {displayTotal.toLocaleString("id-ID")}</span>
           </div>
           <div className="flex justify-between p-3 bg-red-50 rounded-xl">
             <span className="font-medium text-red-600">Total Pengeluaran</span>
-            <span className="font-bold text-red-600">- Rp {(period === "daily" ? todayExpenses : allTotalExpense).toLocaleString("id-ID")}</span>
+            <span className="font-bold text-red-600">- Rp {displayExpenses.toLocaleString("id-ID")}</span>
           </div>
-          <div className={`flex justify-between p-4 rounded-xl font-bold text-lg ${(period === "daily" ? todayProfit : allProfit) >= 0 ? "bg-green-100 text-green-700" : "bg-red-100 text-red-600"}`}>
-            <span>{(period === "daily" ? todayProfit : allProfit) >= 0 ? "🟢 LABA" : "🔴 RUGI"}</span>
-            <span>Rp {Math.abs(period === "daily" ? todayProfit : allProfit).toLocaleString("id-ID")}</span>
+          <div className={`flex justify-between p-4 rounded-xl font-bold text-lg ${displayProfit >= 0 ? "bg-green-100 text-green-700" : "bg-red-100 text-red-600"}`}>
+            <span>{displayProfit >= 0 ? "🟢 LABA" : "🔴 RUGI"}</span>
+            <span>Rp {Math.abs(displayProfit).toLocaleString("id-ID")}</span>
           </div>
         </div>
       </div>
