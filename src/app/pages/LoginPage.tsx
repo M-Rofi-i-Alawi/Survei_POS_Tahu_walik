@@ -1,5 +1,5 @@
 import { useNavigate } from "react-router";
-import { ShoppingCart, Mail, Lock } from "lucide-react";
+import { Mail, Lock } from "lucide-react";
 import { useState } from "react";
 import { useApp } from "../context/AppContext";
 
@@ -33,9 +33,11 @@ export default function LoginPage() {
       <div className="bg-white/10 backdrop-blur-lg rounded-3xl p-8 border border-white/20 shadow-2xl">
         {/* Logo */}
         <div className="flex flex-col items-center mb-8">
-          <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-[#FBAA31] to-[#E87428] flex items-center justify-center mb-4 shadow-lg shadow-[#FBAA31]/30">
-            <ShoppingCart className="w-8 h-8 text-white" />
-          </div>
+          <img
+            src="/logo.png"
+            alt="Cemil.in Logo"
+            className="w-24 h-24 rounded-2xl object-contain mb-4 drop-shadow-lg"
+          />
           <h1 className="text-3xl font-bold text-white mb-2">Cemil.in</h1>
           <p className="text-white/70 text-sm">Pos Tahu Walik</p>
         </div>

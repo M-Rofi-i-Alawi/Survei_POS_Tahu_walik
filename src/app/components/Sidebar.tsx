@@ -63,9 +63,7 @@ export function Sidebar({ isOpen, onToggle }: SidebarProps) {
         {/* Logo */}
         <div className="h-16 flex items-center justify-between px-6 border-b border-white/10">
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#FBAA31] to-[#E87428] flex items-center justify-center">
-              <ShoppingCart className="w-5 h-5 text-white" />
-            </div>
+            <img src="/logo.png" alt="Cemil.in" className="w-8 h-8 rounded-lg object-contain" />
             <span className="font-bold text-lg">Cemil.in</span>
           </div>
           <button onClick={onToggle} className="lg:hidden">
