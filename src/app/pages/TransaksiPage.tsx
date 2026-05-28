@@ -1,14 +1,17 @@
-import { useState } from "react";
-import { Search, Eye, Check, X, Trash2, Edit, User, Save } from "lucide-react";
+import { useState, useRef } from "react";
+import { Search, Eye, Check, X, Trash2, Edit, User, Save, Printer } from "lucide-react";
 import { useApp } from "../context/AppContext";
+import type { Transaction } from "../context/AppContext";
 
 export default function TransaksiPage() {
-  const { transactions, confirmQris, editTransaction, deleteTransaction } = useApp();
+  const { transactions, confirmQris, editTransaction, deleteTransaction, storeConfig } = useApp();
   const [searchQuery, setSearchQuery] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
   const [filterMethod, setFilterMethod] = useState("all");
   const [detailId, setDetailId] = useState<string | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const receiptRef = useRef<HTMLDivElement>(null);
+  const [printTrx, setPrintTrx] = useState<Transaction | null>(null);
 
   // Full edit state
   const [editId, setEditId] = useState<string | null>(null);
@@ -22,7 +25,6 @@ export default function TransaksiPage() {
   });
 
   const detailTrx = detailId ? transactions.find((t) => t.id === detailId) : null;
-  const todayStr = new Date().toISOString().slice(0, 10);
 
   const openEdit = (id: string) => {
     const trx = transactions.find((t) => t.id === id);
@@ -37,8 +39,6 @@ export default function TransaksiPage() {
     const trx = transactions.find((t) => t.id === editId);
     if (!trx) return;
 
-    // Jika status berubah dari pending ke lunas = konfirmasi
-    // Jika status berubah dari lunas ke pending = batalkan (untuk kasus seperti Rofi belum bayar)
     editTransaction(editId, {
       buyerName: editForm.buyerName || "Umum",
       status: editForm.status,
@@ -52,6 +52,146 @@ export default function TransaksiPage() {
     if (deleteId) { deleteTransaction(deleteId); setDeleteId(null); }
   };
 
+  // Print receipt
+  const handlePrint = (trx: Transaction) => {
+    setPrintTrx(trx);
+    setTimeout(() => {
+      const printContent = receiptRef.current;
+      if (!printContent) return;
+
+      const printWindow = window.open("", "_blank", "width=320,height=600");
+      if (!printWindow) return;
+
+      printWindow.document.write(`
+        <html>
+          <head>
+            <title>Struk - ${trx.id.slice(0, 10)}</title>
+            <style>
+              * { margin: 0; padding: 0; box-sizing: border-box; }
+              body {
+                font-family: 'Courier New', Courier, monospace;
+                width: 280px;
+                margin: 0 auto;
+                padding: 10px;
+                font-size: 12px;
+                color: #000;
+              }
+              .center { text-align: center; }
+              .bold { font-weight: bold; }
+              .separator {
+                border-top: 1px dashed #000;
+                margin: 8px 0;
+              }
+              .double-separator {
+                border-top: 2px double #000;
+                margin: 8px 0;
+              }
+              .row {
+                display: flex;
+                justify-content: space-between;
+                padding: 2px 0;
+              }
+              .item-name {
+                padding: 2px 0 0 0;
+              }
+              .item-detail {
+                display: flex;
+                justify-content: space-between;
+                padding: 0 0 2px 10px;
+                color: #555;
+              }
+              .total-row {
+                display: flex;
+                justify-content: space-between;
+                font-weight: bold;
+                font-size: 14px;
+                padding: 4px 0;
+              }
+              .logo-section {
+                text-align: center;
+                margin-bottom: 4px;
+              }
+              .logo-section img {
+                width: 60px;
+                height: 60px;
+                object-fit: contain;
+              }
+              .store-name {
+                font-size: 18px;
+                font-weight: bold;
+                text-align: center;
+              }
+              .store-info {
+                text-align: center;
+                font-size: 10px;
+                color: #555;
+              }
+              .footer {
+                text-align: center;
+                font-size: 10px;
+                color: #777;
+                margin-top: 8px;
+              }
+              @media print {
+                body { width: 280px; }
+              }
+            </style>
+          </head>
+          <body>
+            <div class="logo-section">
+              <img src="/logo.png" alt="Logo" onerror="this.style.display='none'" />
+            </div>
+            <div class="store-name">${storeConfig.name || "Cemil.in"}</div>
+            <div class="store-info">${storeConfig.address || ""}</div>
+            <div class="store-info">${storeConfig.phone ? "Telp: " + storeConfig.phone : ""}</div>
+            
+            <div class="separator"></div>
+            
+            <div class="row"><span>ID</span><span>${trx.id.slice(0, 12)}</span></div>
+            <div class="row"><span>Tanggal</span><span>${trx.date}</span></div>
+            <div class="row"><span>Jam</span><span>${trx.time}</span></div>
+            <div class="row"><span>Pembeli</span><span>${trx.buyerName || "Umum"}</span></div>
+            <div class="row"><span>Metode</span><span>${trx.method === "tunai" ? "Tunai" : "QRIS"}</span></div>
+            <div class="row"><span>Status</span><span>${trx.status === "lunas" ? "LUNAS" : "PENDING"}</span></div>
+            
+            <div class="double-separator"></div>
+            
+            ${trx.items.map((item) => `
+              <div class="item-name bold">${item.productName}</div>
+              <div class="item-detail">
+                <span>${item.quantity} x Rp ${item.price.toLocaleString("id-ID")}</span>
+                <span>Rp ${item.subtotal.toLocaleString("id-ID")}</span>
+              </div>
+            `).join("")}
+            
+            <div class="double-separator"></div>
+            
+            <div class="total-row">
+              <span>TOTAL</span>
+              <span>Rp ${trx.total.toLocaleString("id-ID")}</span>
+            </div>
+            
+            <div class="separator"></div>
+            
+            <div class="footer">
+              <p>Terima kasih atas kunjungan Anda!</p>
+              <p>~ ${storeConfig.name || "Cemil.in"} ~</p>
+            </div>
+          </body>
+        </html>
+      `);
+
+      printWindow.document.close();
+      printWindow.focus();
+      setTimeout(() => {
+        printWindow.print();
+        printWindow.close();
+      }, 300);
+
+      setPrintTrx(null);
+    }, 100);
+  };
+
   // Counts
   const totalTrx = transactions.length;
   const lunasCount = transactions.filter((t) => t.status === "lunas").length;
@@ -62,7 +202,7 @@ export default function TransaksiPage() {
     <div className="space-y-6">
       <div>
         <h1 className="text-3xl font-bold">Riwayat Transaksi</h1>
-        <p className="text-muted-foreground mt-1">Lihat, edit, atau hapus transaksi</p>
+        <p className="text-muted-foreground mt-1">Lihat, edit, cetak struk, atau hapus transaksi</p>
       </div>
 
       {/* Stats */}
@@ -140,10 +280,9 @@ export default function TransaksiPage() {
                       {t.status === "pending" && (
                         <button onClick={() => confirmQris(t.id)} className="p-1.5 hover:bg-green-50 rounded-lg transition-colors" title="Konfirmasi Lunas"><Check className="w-4 h-4 text-green-600" /></button>
                       )}
+                      <button onClick={() => handlePrint(t)} className="p-1.5 hover:bg-purple-50 rounded-lg transition-colors" title="Cetak Struk"><Printer className="w-4 h-4 text-purple-500" /></button>
                       <button onClick={() => openEdit(t.id)} className="p-1.5 hover:bg-blue-50 rounded-lg transition-colors" title="Edit Transaksi"><Edit className="w-4 h-4 text-blue-500" /></button>
-                      {t.date === todayStr && (
-                        <button onClick={() => setDeleteId(t.id)} className="p-1.5 hover:bg-red-50 rounded-lg transition-colors" title="Hapus Transaksi"><Trash2 className="w-4 h-4 text-red-500" /></button>
-                      )}
+                      <button onClick={() => setDeleteId(t.id)} className="p-1.5 hover:bg-red-50 rounded-lg transition-colors" title="Hapus Transaksi"><Trash2 className="w-4 h-4 text-red-500" /></button>
                     </div>
                   </td>
                 </tr>
@@ -155,6 +294,9 @@ export default function TransaksiPage() {
           <div className="text-center py-12 text-muted-foreground"><p className="text-4xl mb-2">📋</p><p>Belum ada transaksi</p></div>
         )}
       </div>
+
+      {/* Hidden receipt for printing */}
+      <div ref={receiptRef} style={{ display: "none" }}></div>
 
       {/* Detail Modal */}
       {detailTrx && (
@@ -184,6 +326,13 @@ export default function TransaksiPage() {
                 <span className="text-[#E87428]">Rp {detailTrx.total.toLocaleString("id-ID")}</span>
               </div>
             </div>
+            {/* Print button in detail modal */}
+            <button
+              onClick={() => { setDetailId(null); handlePrint(detailTrx); }}
+              className="w-full mt-4 py-3 bg-gradient-to-r from-purple-500 to-purple-700 text-white font-semibold rounded-xl shadow-lg transform hover:scale-[1.02] transition-all flex items-center justify-center gap-2"
+            >
+              <Printer className="w-5 h-5" />Cetak Struk
+            </button>
           </div>
         </div>
       )}
