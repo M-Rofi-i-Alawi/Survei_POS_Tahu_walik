@@ -234,6 +234,25 @@ export function AppProvider({ children }: { children: ReactNode }) {
   useEffect(() => saveToStorage("pos_store", storeConfig), [storeConfig]);
   useEffect(() => saveToStorage("pos_notifications", notifications), [notifications]);
 
+  // Sync currentUser dengan data users terbaru saat app dimulai
+  // Ini memastikan login tetap valid meskipun user menutup browser
+  useEffect(() => {
+    if (currentUser) {
+      const freshUser = users.find((u) => u.id === currentUser.id);
+      if (freshUser) {
+        // Update currentUser dengan data terbaru (misal nama/password berubah)
+        if (JSON.stringify(freshUser) !== JSON.stringify(currentUser)) {
+          setCurrentUser(freshUser);
+        }
+      } else {
+        // User sudah dihapus dari sistem, force logout
+        setCurrentUser(null);
+        localStorage.removeItem("pos_currentUser");
+      }
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // Check stok habis and create notifications
   useEffect(() => {
     const today = getToday();
@@ -269,7 +288,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return null;
   };
 
-  const logout = () => setCurrentUser(null);
+  const logout = () => {
+    setCurrentUser(null);
+    localStorage.removeItem("pos_currentUser");
+  };
 
   // ---- PRODUCTS ----
   const addProduct = (p: Omit<Product, "id" | "createdAt" | "stokTerjual">) => {

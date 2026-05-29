@@ -14,8 +14,8 @@ export default function PenggunaPage() {
   const isAdmin = currentUser?.role === "admin";
   const isOwner = currentUser?.role === "owner";
 
-  // Admin sees all users, Owner sees only themselves
-  const visibleUsers = isAdmin
+  // Owner sees all users, Admin sees only themselves
+  const visibleUsers = isOwner
     ? users
     : users.filter((u) => u.id === currentUser?.id);
 
@@ -32,8 +32,8 @@ export default function PenggunaPage() {
   };
 
   const openEdit = (id: string) => {
-    // Owner can only edit themselves
-    if (isOwner && id !== currentUser?.id) return;
+    // Admin can only edit themselves
+    if (isAdmin && id !== currentUser?.id) return;
     const u = users.find((us) => us.id === id);
     if (u) {
       setEditId(id);
@@ -45,8 +45,8 @@ export default function PenggunaPage() {
   const handleSave = () => {
     if (!form.name.trim() || !form.email.trim()) return;
     if (editId) {
-      // Owner can only edit their own name (not role)
-      if (isOwner) {
+      // Admin can only edit their own name (not role)
+      if (isAdmin) {
         editUser(editId, { name: form.name, email: form.email });
       } else {
         editUser(editId, { name: form.name, email: form.email, role: form.role });
@@ -59,8 +59,8 @@ export default function PenggunaPage() {
   };
 
   const handleReset = () => {
-    // Owner can only reset their own password
-    if (isOwner && showReset !== currentUser?.id) return;
+    // Admin can only reset their own password
+    if (isAdmin && showReset !== currentUser?.id) return;
     if (showReset && newPassword.length >= 6) {
       resetPassword(showReset, newPassword);
       setShowReset(null);
@@ -73,16 +73,16 @@ export default function PenggunaPage() {
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h1 className="text-3xl font-bold">
-            {isOwner ? "Akun Saya" : "Manajemen Pengguna"}
+            {isAdmin ? "Akun Saya" : "Manajemen Pengguna"}
           </h1>
           <p className="text-muted-foreground mt-1">
-            {isOwner
+            {isAdmin
               ? "Kelola nama & password akun Anda"
               : "Kelola akun Owner & Admin"}
           </p>
         </div>
-        {/* Only Admin can add new users */}
-        {isAdmin && (
+        {/* Only Owner can add new users */}
+        {isOwner && (
           <button
             onClick={openAdd}
             className="px-6 py-3 bg-gradient-to-r from-purple-500 to-purple-700 text-white font-semibold rounded-xl shadow-lg flex items-center gap-2 transform hover:scale-[1.02] transition-all"
@@ -93,8 +93,8 @@ export default function PenggunaPage() {
         )}
       </div>
 
-      {/* Search bar - only show for Admin since Owner only sees themselves */}
-      {isAdmin && (
+      {/* Search bar - only show for Owner since Admin only sees themselves */}
+      {isOwner && (
         <div className="relative">
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
           <input
@@ -205,11 +205,11 @@ export default function PenggunaPage() {
                   value={form.email}
                   onChange={(e) => setForm({ ...form, email: e.target.value })}
                   className="w-full px-4 py-3 bg-muted/50 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500/30"
-                  disabled={isOwner}
+                  disabled={isAdmin}
                 />
               </div>
               {/* Owner cannot change role, Admin can */}
-              {isAdmin && (
+              {isOwner && (
                 <div>
                   <label className="block text-sm font-medium mb-2">Role</label>
                   <select

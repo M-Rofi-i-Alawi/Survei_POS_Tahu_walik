@@ -1,15 +1,20 @@
-import { useNavigate } from "react-router";
+import { useNavigate, Navigate } from "react-router";
 import { Mail, Lock } from "lucide-react";
 import { useState } from "react";
 import { useApp } from "../context/AppContext";
 
 export default function LoginPage() {
   const navigate = useNavigate();
-  const { login } = useApp();
+  const { login, currentUser } = useApp();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+
+  // Jika sudah login, langsung redirect ke dashboard
+  if (currentUser) {
+    return <Navigate to="/dashboard" replace />;
+  }
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
@@ -105,4 +110,3 @@ export default function LoginPage() {
     </div>
   );
 }
-
