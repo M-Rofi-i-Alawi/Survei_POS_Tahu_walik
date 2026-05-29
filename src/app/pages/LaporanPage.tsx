@@ -372,7 +372,7 @@ export default function LaporanPage() {
           <h1 className="text-3xl font-bold">Laporan Penjualan</h1>
           <p className="text-muted-foreground mt-1">Rekap penjualan & laba rugi</p>
         </div>
-        <div className="flex gap-2 items-center">
+        <div className="flex flex-wrap gap-2 items-center">
           {["daily", "weekly", "all"].map((p) => (
             <button key={p} onClick={() => setPeriod(p)} className={`px-4 py-2 rounded-xl font-medium text-sm transition-all ${period === p ? "bg-gradient-to-r from-[#FBAA31] to-[#E87428] text-white shadow-lg" : "bg-white border border-border hover:border-[#FBAA31]"}`}>
               {p === "daily" ? "Hari Ini" : p === "weekly" ? "7 Hari" : "Semua"}

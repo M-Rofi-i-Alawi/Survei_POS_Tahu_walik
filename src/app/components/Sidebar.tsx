@@ -33,8 +33,8 @@ export function Sidebar({ isOpen, onToggle }: SidebarProps) {
     { path: "/dashboard/produk", icon: Package, label: "Produk", show: true },
     { path: "/dashboard/stok", icon: Warehouse, label: "Stok Harian", show: true },
     { path: "/dashboard/transaksi", icon: Receipt, label: "Transaksi", show: true },
-    { path: "/dashboard/pengeluaran", icon: Wallet, label: "Pengeluaran", show: isOwner },
-    { path: "/dashboard/laporan", icon: BarChart3, label: "Laporan", show: isOwner },
+    { path: "/dashboard/pengeluaran", icon: Wallet, label: "Pengeluaran", show: true },
+    { path: "/dashboard/laporan", icon: BarChart3, label: "Laporan", show: true },
     { path: "/dashboard/pengguna", icon: UserCog, label: "Pengguna", show: true },
     { path: "/dashboard/pengaturan", icon: Settings, label: "Pengaturan", show: true },
   ].filter((item) => item.show);
