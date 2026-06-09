@@ -32,7 +32,9 @@ export default function PenggunaPage() {
   };
 
   const openEdit = (id: string) => {
-    // Admin can only edit themselves
+    // Owner tidak bisa edit siapapun
+    if (isOwner) return;
+    // Admin hanya bisa edit dirinya sendiri
     if (isAdmin && id !== currentUser?.id) return;
     const u = users.find((us) => us.id === id);
     if (u) {
@@ -78,11 +80,11 @@ export default function PenggunaPage() {
           <p className="text-muted-foreground mt-1">
             {isAdmin
               ? "Kelola nama & password akun Anda"
-              : "Kelola akun Owner & Admin"}
+              : "Lihat daftar akun Owner & Admin"}
           </p>
         </div>
-        {/* Only Owner can add new users */}
-        {isOwner && (
+        {/* Only Admin can add new users */}
+        {isAdmin && (
           <button
             onClick={openAdd}
             className="px-6 py-3 bg-gradient-to-r from-purple-500 to-purple-700 text-white font-semibold rounded-xl shadow-lg flex items-center gap-2 transform hover:scale-[1.02] transition-all"
@@ -152,7 +154,8 @@ export default function PenggunaPage() {
                     <div className="flex items-center gap-2">
                       <button
                         onClick={() => openEdit(user.id)}
-                        className="p-2 hover:bg-[#FBAA31]/10 rounded-lg transition-colors"
+                        disabled={isOwner}
+                        className="p-2 hover:bg-[#FBAA31]/10 rounded-lg transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
                         title="Edit"
                       >
                         <Edit className="w-4 h-4 text-[#FBAA31]" />
@@ -208,8 +211,8 @@ export default function PenggunaPage() {
                   disabled={isAdmin}
                 />
               </div>
-              {/* Owner cannot change role, Admin can */}
-              {isOwner && (
+              {/* Only Admin can set/change role */}
+              {isAdmin && (
                 <div>
                   <label className="block text-sm font-medium mb-2">Role</label>
                   <select
