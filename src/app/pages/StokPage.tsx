@@ -8,11 +8,15 @@ export default function StokPage() {
   const [editValue, setEditValue] = useState("");
   const [showSuccess, setShowSuccess] = useState("");
 
-  const handleSetStok = (productId: string) => {
-    setDailyStock(productId, Number(editValue) || 0);
+  const handleSetStok = async (productId: string) => {
+    await setDailyStock(productId, Number(editValue) || 0);
     setEditingId(null);
     setShowSuccess(productId);
     setTimeout(() => setShowSuccess(""), 2000);
+  };
+
+  const handleReset = async (productId: string) => {
+    await resetDailyStock(productId);
   };
 
   return (
@@ -85,15 +89,36 @@ export default function StokPage() {
                 <div className="space-y-2">
                   <label className="block text-sm font-medium">Set Stok Baru (pcs)</label>
                   <div className="flex gap-2">
-                    <input type="text" inputMode="numeric" value={editValue} onChange={(e) => { const v = e.target.value.replace(/[^0-9]/g, ""); setEditValue(v); }} className="flex-1 px-4 py-2 bg-muted/50 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#FBAA31]/30" autoFocus placeholder="0" />
-                    <button onClick={() => handleSetStok(product.id)} className="px-4 py-2 bg-gradient-to-r from-[#FBAA31] to-[#E87428] text-white font-medium rounded-xl hover:shadow-lg transition-all"><Check className="w-5 h-5" /></button>
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      value={editValue}
+                      onChange={(e) => { const v = e.target.value.replace(/[^0-9]/g, ""); setEditValue(v); }}
+                      className="flex-1 px-4 py-2 bg-muted/50 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#FBAA31]/30"
+                      autoFocus
+                      placeholder="0"
+                    />
+                    <button onClick={() => handleSetStok(product.id)} className="px-4 py-2 bg-gradient-to-r from-[#FBAA31] to-[#E87428] text-white font-medium rounded-xl hover:shadow-lg transition-all">
+                      <Check className="w-5 h-5" />
+                    </button>
                     <button onClick={() => setEditingId(null)} className="px-4 py-2 bg-muted rounded-xl hover:bg-muted/70 transition-all">Batal</button>
                   </div>
                 </div>
               ) : (
                 <div className="flex gap-2">
-                  <button onClick={() => { setEditingId(product.id); setEditValue(String(product.stokHarian)); }} className="flex-1 py-2 bg-gradient-to-r from-[#FBAA31] to-[#E87428] text-white font-medium rounded-xl hover:shadow-lg transition-all text-sm">Set Stok Hari Ini</button>
-                  <button onClick={() => resetDailyStock(product.id)} className="py-2 px-3 bg-muted rounded-xl hover:bg-muted/70 transition-all" title="Reset Terjual"><RefreshCw className="w-4 h-4" /></button>
+                  <button
+                    onClick={() => { setEditingId(product.id); setEditValue(String(product.stokHarian)); }}
+                    className="flex-1 py-2 bg-gradient-to-r from-[#FBAA31] to-[#E87428] text-white font-medium rounded-xl hover:shadow-lg transition-all text-sm"
+                  >
+                    Set Stok Hari Ini
+                  </button>
+                  <button
+                    onClick={() => handleReset(product.id)}
+                    className="py-2 px-3 bg-muted rounded-xl hover:bg-muted/70 transition-all"
+                    title="Reset Terjual"
+                  >
+                    <RefreshCw className="w-4 h-4" />
+                  </button>
                 </div>
               )}
             </div>
