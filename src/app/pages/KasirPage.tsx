@@ -47,10 +47,10 @@ export default function KasirPage() {
   const total = cart.reduce((sum, c) => sum + c.price * c.quantity, 0);
   const filteredProducts = products.filter((p) => p.name.toLowerCase().includes(searchQuery.toLowerCase()));
 
-  const handlePayTunai = () => {
+  const handlePayTunai = async () => {
     if (cart.length === 0) return;
     const items = cart.map((c) => ({ productId: c.productId, productName: c.productName, quantity: c.quantity, price: c.price, subtotal: c.price * c.quantity }));
-    const trx = addTransaction(items, "tunai", buyerName || "Umum");
+    const trx = await addTransaction(items, "tunai", buyerName || "Umum");
     setLastTrx(trx);
     setLastTotal(total);
     setShowReceipt(true);
@@ -58,20 +58,21 @@ export default function KasirPage() {
     setBuyerName("");
   };
 
-  const handlePayQris = () => {
+  const handlePayQris = async () => {
     if (cart.length === 0) return;
     const items = cart.map((c) => ({ productId: c.productId, productName: c.productName, quantity: c.quantity, price: c.price, subtotal: c.price * c.quantity }));
-    const trx = addTransaction(items, "qris", buyerName || "Umum");
+    const trx = await addTransaction(items, "qris", buyerName || "Umum");
     setPendingTrxId(trx.id);
     setLastTrx(trx);
     setLastTotal(total);
     setShowQrisModal(true);
     setCart([]);
+    setBuyerName("");
   };
 
-  const handleConfirmQris = () => {
+  const handleConfirmQris = async () => {
     if (pendingTrxId) {
-      confirmQris(pendingTrxId);
+      await confirmQris(pendingTrxId);
       setPendingTrxId(null);
       setShowQrisModal(false);
       setShowReceipt(true);
@@ -135,6 +136,13 @@ export default function KasirPage() {
             );
           })}
         </div>
+
+        {filteredProducts.length === 0 && (
+          <div className="text-center py-16 text-muted-foreground">
+            <p className="text-5xl mb-3">🔍</p>
+            <p className="font-medium">Produk tidak ditemukan</p>
+          </div>
+        )}
       </div>
 
       {/* Right Side - Cart */}

@@ -1,41 +1,26 @@
 import { useState } from "react";
-import { Plus, Edit, Key, Search, X, Save } from "lucide-react";
+import { Edit, Key, X, Save } from "lucide-react";
 import { useApp } from "../context/AppContext";
 
 export default function PenggunaPage() {
-  const { users, currentUser, addUser, editUser, resetPassword } = useApp();
-  const [searchQuery, setSearchQuery] = useState("");
+  const { users, currentUser, editUser, resetPassword, addUser } = useApp();
   const [showModal, setShowModal] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
-  const [form, setForm] = useState({ name: "", email: "", role: "owner" as "owner" | "admin", password: "" });
+  const [form, setForm] = useState({ name: "", email: "", role: "admin" as "owner" | "admin", password: "" });
   const [showReset, setShowReset] = useState<string | null>(null);
   const [newPassword, setNewPassword] = useState("");
 
   const isAdmin = currentUser?.role === "admin";
   const isOwner = currentUser?.role === "owner";
 
-  // Owner sees all users, Admin sees only themselves
+  // Owner hanya lihat akunnya sendiri, Admin lihat semua
   const visibleUsers = isOwner
-    ? users
-    : users.filter((u) => u.id === currentUser?.id);
-
-  const filtered = visibleUsers.filter(
-    (u) =>
-      u.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      u.email.toLowerCase().includes(searchQuery.toLowerCase())
-  );
-
-  const openAdd = () => {
-    setEditId(null);
-    setForm({ name: "", email: "", role: "owner", password: "" });
-    setShowModal(true);
-  };
+    ? users.filter((u) => u.id === currentUser?.id)
+    : users;
 
   const openEdit = (id: string) => {
-    // Owner tidak bisa edit siapapun
-    if (isOwner) return;
-    // Admin hanya bisa edit dirinya sendiri
-    if (isAdmin && id !== currentUser?.id) return;
+    // Owner hanya bisa edit akunnya sendiri
+    if (isOwner && id !== currentUser?.id) return;
     const u = users.find((us) => us.id === id);
     if (u) {
       setEditId(id);
@@ -44,27 +29,32 @@ export default function PenggunaPage() {
     }
   };
 
-  const handleSave = () => {
+  const openAdd = () => {
+    setEditId(null);
+    setForm({ name: "", email: "", role: "admin", password: "" });
+    setShowModal(true);
+  };
+
+  const handleSave = async () => {
     if (!form.name.trim() || !form.email.trim()) return;
     if (editId) {
-      // Admin can only edit their own name (not role)
-      if (isAdmin) {
-        editUser(editId, { name: form.name, email: form.email });
+      if (isOwner) {
+        // Owner hanya bisa edit nama & email miliknya sendiri, tidak bisa ganti role
+        await editUser(editId, { name: form.name, email: form.email });
       } else {
-        editUser(editId, { name: form.name, email: form.email, role: form.role });
+        await editUser(editId, { name: form.name, email: form.email, role: form.role });
       }
     } else {
       if (!form.password) return;
-      addUser({ name: form.name, email: form.email, role: form.role, password: form.password });
+      await addUser({ name: form.name, email: form.email, role: form.role, password: form.password });
     }
     setShowModal(false);
   };
 
-  const handleReset = () => {
-    // Admin can only reset their own password
-    if (isAdmin && showReset !== currentUser?.id) return;
+  const handleReset = async () => {
+    if (isOwner && showReset !== currentUser?.id) return;
     if (showReset && newPassword.length >= 6) {
-      resetPassword(showReset, newPassword);
+      await resetPassword(showReset, newPassword);
       setShowReset(null);
       setNewPassword("");
     }
@@ -75,39 +65,24 @@ export default function PenggunaPage() {
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h1 className="text-3xl font-bold">
-            {isAdmin ? "Akun Saya" : "Manajemen Pengguna"}
+            {isOwner ? "Akun Saya" : "Manajemen Pengguna"}
           </h1>
           <p className="text-muted-foreground mt-1">
-            {isAdmin
-              ? "Kelola nama & password akun Anda"
-              : "Lihat daftar akun Owner & Admin"}
+            {isOwner
+              ? "Lihat dan perbarui informasi akun Anda"
+              : "Kelola akun Owner & Admin"}
           </p>
         </div>
-        {/* Only Admin can add new users */}
+        {/* Hanya Admin yang bisa tambah user */}
         {isAdmin && (
           <button
             onClick={openAdd}
             className="px-6 py-3 bg-gradient-to-r from-purple-500 to-purple-700 text-white font-semibold rounded-xl shadow-lg flex items-center gap-2 transform hover:scale-[1.02] transition-all"
           >
-            <Plus className="w-5 h-5" />
-            Tambah User
+            + Tambah User
           </button>
         )}
       </div>
-
-      {/* Search bar - only show for Owner since Admin only sees themselves */}
-      {isOwner && (
-        <div className="relative">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-          <input
-            type="text"
-            placeholder="Cari pengguna..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-12 pr-4 py-3 bg-white border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20"
-          />
-        </div>
-      )}
 
       <div className="bg-white rounded-2xl border border-border overflow-hidden">
         <div className="overflow-x-auto">
@@ -120,7 +95,7 @@ export default function PenggunaPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
-              {filtered.map((user) => (
+              {visibleUsers.map((user) => (
                 <tr key={user.id} className="hover:bg-muted/30 transition-colors">
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-3">
@@ -152,24 +127,26 @@ export default function PenggunaPage() {
                   </td>
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-2">
-                      <button
-                        onClick={() => openEdit(user.id)}
-                        disabled={isOwner}
-                        className="p-2 hover:bg-[#FBAA31]/10 rounded-lg transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
-                        title="Edit"
-                      >
-                        <Edit className="w-4 h-4 text-[#FBAA31]" />
-                      </button>
-                      <button
-                        onClick={() => {
-                          setShowReset(user.id);
-                          setNewPassword("");
-                        }}
-                        className="p-2 hover:bg-purple-50 rounded-lg transition-colors"
-                        title="Reset Password"
-                      >
-                        <Key className="w-4 h-4 text-purple-500" />
-                      </button>
+                      {/* Owner hanya bisa edit akunnya sendiri */}
+                      {(isAdmin || user.id === currentUser?.id) && (
+                        <button
+                          onClick={() => openEdit(user.id)}
+                          className="p-2 hover:bg-[#FBAA31]/10 rounded-lg transition-colors"
+                          title="Edit"
+                        >
+                          <Edit className="w-4 h-4 text-[#FBAA31]" />
+                        </button>
+                      )}
+                      {/* Owner hanya bisa reset password miliknya sendiri */}
+                      {(isAdmin || user.id === currentUser?.id) && (
+                        <button
+                          onClick={() => { setShowReset(user.id); setNewPassword(""); }}
+                          className="p-2 hover:bg-purple-50 rounded-lg transition-colors"
+                          title="Reset Password"
+                        >
+                          <Key className="w-4 h-4 text-purple-500" />
+                        </button>
+                      )}
                     </div>
                   </td>
                 </tr>
@@ -185,7 +162,7 @@ export default function PenggunaPage() {
           <div className="bg-white rounded-3xl p-8 max-w-md w-full shadow-2xl">
             <div className="flex items-center justify-between mb-6">
               <h3 className="text-xl font-bold">
-                {editId ? "Edit User" : "Tambah User"}
+                {editId ? "Edit Akun" : "Tambah User"}
               </h3>
               <button onClick={() => setShowModal(false)} className="p-2 hover:bg-muted rounded-lg">
                 <X className="w-5 h-5" />
@@ -208,10 +185,9 @@ export default function PenggunaPage() {
                   value={form.email}
                   onChange={(e) => setForm({ ...form, email: e.target.value })}
                   className="w-full px-4 py-3 bg-muted/50 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500/30"
-                  disabled={isAdmin}
                 />
               </div>
-              {/* Only Admin can set/change role */}
+              {/* Hanya Admin yang bisa set role */}
               {isAdmin && (
                 <div>
                   <label className="block text-sm font-medium mb-2">Role</label>
@@ -220,8 +196,8 @@ export default function PenggunaPage() {
                     onChange={(e) => setForm({ ...form, role: e.target.value as "owner" | "admin" })}
                     className="w-full px-4 py-3 bg-muted/50 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500/30"
                   >
-                    <option value="owner">Owner</option>
                     <option value="admin">Admin</option>
+                    <option value="owner">Owner</option>
                   </select>
                 </div>
               )}
@@ -254,7 +230,7 @@ export default function PenggunaPage() {
           <div className="bg-white rounded-3xl p-8 max-w-sm w-full shadow-2xl">
             <h3 className="text-xl font-bold mb-4">Reset Password</h3>
             <p className="text-sm text-muted-foreground mb-4">
-              User: {users.find((u) => u.id === showReset)?.name}
+              Akun: {users.find((u) => u.id === showReset)?.name}
             </p>
             <input
               type="password"
