@@ -11,25 +11,22 @@ export default function LoginPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  // Jika sudah login, langsung redirect ke dashboard
   if (currentUser) {
     return <Navigate to="/dashboard" replace />;
   }
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
     setLoading(true);
 
-    setTimeout(() => {
-      const user = login(email, password);
-      if (user) {
-        navigate("/dashboard");
-      } else {
-        setError("Email atau password salah!");
-        setLoading(false);
-      }
-    }, 500);
+    const user = await login(email, password);
+    if (user) {
+      navigate("/dashboard");
+    } else {
+      setError("Email atau password salah!");
+      setLoading(false);
+    }
   };
 
   return (

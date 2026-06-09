@@ -11,25 +11,23 @@ export default function AdminLoginPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
     setLoading(true);
 
-    setTimeout(() => {
-      const user = login(email, password);
-      if (user) {
-        if (user.role === "admin") {
-          navigate("/dashboard");
-        } else {
-          setError("Halaman ini khusus untuk Admin maintenance.");
-          setLoading(false);
-        }
+    const user = await login(email, password);
+    if (user) {
+      if (user.role === "admin") {
+        navigate("/dashboard");
       } else {
-        setError("Email atau password salah!");
+        setError("Halaman ini khusus untuk Admin maintenance.");
         setLoading(false);
       }
-    }, 500);
+    } else {
+      setError("Email atau password salah!");
+      setLoading(false);
+    }
   };
 
   return (

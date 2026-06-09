@@ -1,5 +1,5 @@
 import { useState, useRef } from "react";
-import { Store, QrCode, Upload, Save, Check } from "lucide-react";
+import { Store, QrCode, Upload, Save, Check, Trash2 } from "lucide-react";
 import { useApp } from "../context/AppContext";
 
 export default function PengaturanPage() {
@@ -87,9 +87,20 @@ export default function PengaturanPage() {
               </div>
             )}
             <input ref={fileRef} type="file" accept="image/*" onChange={handleUploadQR} className="hidden" />
-            <button onClick={() => fileRef.current?.click()} className="px-6 py-2 bg-[#FBAA31]/10 text-[#E87428] font-medium rounded-xl hover:bg-[#FBAA31]/20 transition-all flex items-center justify-center gap-2 mx-auto">
-              <Upload className="w-4 h-4" />{qris.imageData ? "Ganti QR Code" : "Upload QR Code"}
-            </button>
+            <div className="flex items-center justify-center gap-2">
+              <button onClick={() => fileRef.current?.click()} className="px-6 py-2 bg-[#FBAA31]/10 text-[#E87428] font-medium rounded-xl hover:bg-[#FBAA31]/20 transition-all flex items-center gap-2">
+                <Upload className="w-4 h-4" />{qris.imageData ? "Ganti QR Code" : "Upload QR Code"}
+              </button>
+              {qris.imageData && (
+                <button
+                  onClick={() => setQris({ ...qris, imageData: "" })}
+                  className="p-2 bg-red-50 text-red-500 rounded-xl hover:bg-red-100 transition-all"
+                  title="Hapus QR Code"
+                >
+                  <Trash2 className="w-5 h-5" />
+                </button>
+              )}
+            </div>
           </div>
 
           <div className="mb-4">

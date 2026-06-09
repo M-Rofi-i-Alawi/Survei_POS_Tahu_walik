@@ -1,4 +1,15 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
+import {
+  doc,
+  getDoc,
+  setDoc,
+  onSnapshot,
+  collection,
+  getDocs,
+  deleteDoc,
+  writeBatch,
+} from "firebase/firestore";
+import { db } from "../../lib/firebase";
 
 // ============ TYPES ============
 export interface Product {
@@ -70,58 +81,42 @@ export interface Notification {
 
 // ============ CONTEXT TYPE ============
 interface AppContextType {
-  // Auth
+  isLoading: boolean;
   currentUser: AppUser | null;
-  login: (email: string, password: string) => AppUser | null;
+  login: (email: string, password: string) => Promise<AppUser | null>;
   logout: () => void;
-
-  // Products
   products: Product[];
-  addProduct: (p: Omit<Product, "id" | "createdAt" | "stokTerjual">) => void;
-  editProduct: (id: string, p: Partial<Product>) => void;
-  deleteProduct: (id: string) => void;
-
-  // Stock
-  setDailyStock: (productId: string, amount: number) => void;
-  resetDailyStock: (productId: string) => void;
+  addProduct: (p: Omit<Product, "id" | "createdAt" | "stokTerjual">) => Promise<void>;
+  editProduct: (id: string, p: Partial<Product>) => Promise<void>;
+  deleteProduct: (id: string) => Promise<void>;
+  setDailyStock: (productId: string, amount: number) => Promise<void>;
+  resetDailyStock: (productId: string) => Promise<void>;
   getSisaStok: (productId: string) => number;
-
-  // Transactions
   transactions: Transaction[];
-  addTransaction: (items: TransactionItem[], method: "tunai" | "qris", buyerName: string) => Transaction;
-  editTransaction: (id: string, updates: Partial<Transaction>) => void;
-  deleteTransaction: (id: string) => void;
-  confirmQris: (id: string) => void;
+  addTransaction: (items: TransactionItem[], method: "tunai" | "qris", buyerName: string) => Promise<Transaction>;
+  editTransaction: (id: string, updates: Partial<Transaction>) => Promise<void>;
+  deleteTransaction: (id: string) => Promise<void>;
+  confirmQris: (id: string) => Promise<void>;
   getTodayTransactions: () => Transaction[];
-
-  // Expenses
   expenses: Expense[];
-  addExpense: (description: string, amount: number, date: string) => void;
-  deleteExpense: (id: string) => void;
-
-  // QRIS
+  addExpense: (description: string, amount: number, date: string) => Promise<void>;
+  deleteExpense: (id: string) => Promise<void>;
   qrisConfig: QrisConfig;
-  updateQris: (config: Partial<QrisConfig>) => void;
-
-  // Store
+  updateQris: (config: Partial<QrisConfig>) => Promise<void>;
   storeConfig: StoreConfig;
-  updateStore: (config: Partial<StoreConfig>) => void;
-
-  // Users (admin only)
+  updateStore: (config: Partial<StoreConfig>) => Promise<void>;
   users: AppUser[];
-  addUser: (u: Omit<AppUser, "id">) => void;
-  editUser: (id: string, u: Partial<AppUser>) => void;
-  resetPassword: (id: string, newPassword: string) => void;
-
-  // Notifications
+  addUser: (u: Omit<AppUser, "id">) => Promise<void>;
+  editUser: (id: string, u: Partial<AppUser>) => Promise<void>;
+  resetPassword: (id: string, newPassword: string) => Promise<void>;
   notifications: Notification[];
-  markNotificationRead: (id: string) => void;
-  clearNotifications: () => void;
+  markNotificationRead: (id: string) => Promise<void>;
+  clearNotifications: () => Promise<void>;
 }
 
 const AppContext = createContext<AppContextType | null>(null);
 
-// ============ HELPER ============
+// ============ HELPERS ============
 function generateId(prefix: string) {
   return `${prefix}${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
 }
@@ -134,55 +129,11 @@ function getNow() {
   return new Date().toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" });
 }
 
-function loadFromStorage<T>(key: string, fallback: T): T {
-  try {
-    const data = localStorage.getItem(key);
-    return data ? JSON.parse(data) : fallback;
-  } catch {
-    return fallback;
-  }
-}
-
-function saveToStorage<T>(key: string, data: T) {
-  localStorage.setItem(key, JSON.stringify(data));
-}
-
-// ============ DEFAULT DATA ============
-const defaultProducts: Product[] = [
-  {
-    id: "PRD001",
-    name: "Tahu Walik",
-    price: 1000,
-    stokHarian: 30,
-    stokTerjual: 0,
-    image: "🥟",
-    photoUrl: "",
-    createdAt: "2026-05-17",
-  },
-];
-
+// ============ DEFAULT DATA (hanya users & config, tidak ada produk) ============
 const defaultUsers: AppUser[] = [
-  {
-    id: "USR001",
-    name: "Ishaq Abdul Zafar",
-    email: "ishaq@cemil.in",
-    role: "owner",
-    password: "owner123",
-  },
-  {
-    id: "USR002",
-    name: "Rofi",
-    email: "rofi@cemil.in",
-    role: "admin",
-    password: "admin123",
-  },
-  {
-    id: "USR003",
-    name: "Adit",
-    email: "adit@cemil.in",
-    role: "admin",
-    password: "admin123",
-  },
+  { id: "USR001", name: "Ishaq Abdul Zafar", email: "ishaq@cemil.in", role: "owner", password: "owner123" },
+  { id: "USR002", name: "Rofi", email: "rofi@cemil.in", role: "admin", password: "admin123" },
+  { id: "USR003", name: "Adit", email: "adit@cemil.in", role: "admin", password: "admin123" },
 ];
 
 const defaultStoreConfig: StoreConfig = {
@@ -197,73 +148,112 @@ const defaultQrisConfig: QrisConfig = {
   accountName: "Cemil.in - Ishaq",
 };
 
+// ============ FIRESTORE INIT ============
+async function initializeDefaultData() {
+  const storeSnap = await getDoc(doc(db, "config", "store"));
+  if (!storeSnap.exists()) {
+    await setDoc(doc(db, "config", "store"), defaultStoreConfig);
+  }
+
+  const qrisSnap = await getDoc(doc(db, "config", "qris"));
+  if (!qrisSnap.exists()) {
+    await setDoc(doc(db, "config", "qris"), defaultQrisConfig);
+  }
+
+  const usersSnap = await getDocs(collection(db, "users"));
+  if (usersSnap.empty) {
+    const batch = writeBatch(db);
+    defaultUsers.forEach((u) => {
+      batch.set(doc(db, "users", u.id), u);
+    });
+    await batch.commit();
+  }
+
+  // Produk tidak diisi otomatis — owner yang tambah sendiri lewat UI
+}
+
 // ============ PROVIDER ============
 export function AppProvider({ children }: { children: ReactNode }) {
-  const [currentUser, setCurrentUser] = useState<AppUser | null>(
-    loadFromStorage("pos_currentUser", null)
-  );
-  const [products, setProducts] = useState<Product[]>(
-    loadFromStorage("pos_products", defaultProducts)
-  );
-  const [transactions, setTransactions] = useState<Transaction[]>(
-    loadFromStorage("pos_transactions", [])
-  );
-  const [expenses, setExpenses] = useState<Expense[]>(
-    loadFromStorage("pos_expenses", [])
-  );
-  const [users, setUsers] = useState<AppUser[]>(
-    loadFromStorage("pos_users", defaultUsers)
-  );
-  const [qrisConfig, setQrisConfig] = useState<QrisConfig>(
-    loadFromStorage("pos_qris", defaultQrisConfig)
-  );
-  const [storeConfig, setStoreConfig] = useState<StoreConfig>(
-    loadFromStorage("pos_store", defaultStoreConfig)
-  );
-  const [notifications, setNotifications] = useState<Notification[]>(
-    loadFromStorage("pos_notifications", [])
-  );
+  const [isLoading, setIsLoading] = useState(true);
+  const [currentUser, setCurrentUser] = useState<AppUser | null>(null);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [expenses, setExpenses] = useState<Expense[]>([]);
+  const [users, setUsers] = useState<AppUser[]>([]);
+  const [qrisConfig, setQrisConfig] = useState<QrisConfig>(defaultQrisConfig);
+  const [storeConfig, setStoreConfig] = useState<StoreConfig>(defaultStoreConfig);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
 
-  // Persist to localStorage
-  useEffect(() => saveToStorage("pos_currentUser", currentUser), [currentUser]);
-  useEffect(() => saveToStorage("pos_products", products), [products]);
-  useEffect(() => saveToStorage("pos_transactions", transactions), [transactions]);
-  useEffect(() => saveToStorage("pos_expenses", expenses), [expenses]);
-  useEffect(() => saveToStorage("pos_users", users), [users]);
-  useEffect(() => saveToStorage("pos_qris", qrisConfig), [qrisConfig]);
-  useEffect(() => saveToStorage("pos_store", storeConfig), [storeConfig]);
-  useEffect(() => saveToStorage("pos_notifications", notifications), [notifications]);
-
-  // Sync currentUser dengan data users terbaru saat app dimulai
-  // Ini memastikan login tetap valid meskipun user menutup browser
   useEffect(() => {
-    if (currentUser) {
-      const freshUser = users.find((u) => u.id === currentUser.id);
-      if (freshUser) {
-        // Update currentUser dengan data terbaru (misal nama/password berubah)
-        if (JSON.stringify(freshUser) !== JSON.stringify(currentUser)) {
-          setCurrentUser(freshUser);
-        }
-      } else {
-        // User sudah dihapus dari sistem, force logout
-        setCurrentUser(null);
-        localStorage.removeItem("pos_currentUser");
+    let unsubscribers: (() => void)[] = [];
+
+    const init = async () => {
+      await initializeDefaultData();
+
+      const savedUser = sessionStorage.getItem("pos_currentUser");
+      if (savedUser) {
+        try { setCurrentUser(JSON.parse(savedUser)); } catch { /* ignore */ }
       }
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+
+      unsubscribers.push(
+        onSnapshot(collection(db, "products"), (snap) => {
+          setProducts(snap.docs.map((d) => d.data() as Product));
+        }),
+        onSnapshot(collection(db, "transactions"), (snap) => {
+          const trxs = snap.docs.map((d) => d.data() as Transaction);
+          trxs.sort((a, b) => (b.date + b.time).localeCompare(a.date + a.time));
+          setTransactions(trxs);
+        }),
+        onSnapshot(collection(db, "expenses"), (snap) => {
+          const exps = snap.docs.map((d) => d.data() as Expense);
+          exps.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+          setExpenses(exps);
+        }),
+        onSnapshot(collection(db, "users"), (snap) => {
+          setUsers(snap.docs.map((d) => d.data() as AppUser));
+        }),
+        onSnapshot(collection(db, "notifications"), (snap) => {
+          const notifs = snap.docs.map((d) => d.data() as Notification);
+          notifs.sort((a, b) => b.timestamp.localeCompare(a.timestamp));
+          setNotifications(notifs);
+        }),
+        onSnapshot(doc(db, "config", "store"), (snap) => {
+          if (snap.exists()) setStoreConfig(snap.data() as StoreConfig);
+        }),
+        onSnapshot(doc(db, "config", "qris"), (snap) => {
+          if (snap.exists()) setQrisConfig(snap.data() as QrisConfig);
+        }),
+      );
+
+      setIsLoading(false);
+    };
+
+    init();
+    return () => unsubscribers.forEach((u) => u());
   }, []);
 
-  // Check stok habis and create notifications
+  useEffect(() => {
+    if (currentUser) {
+      const fresh = users.find((u) => u.id === currentUser.id);
+      if (!fresh) {
+        setCurrentUser(null);
+        sessionStorage.removeItem("pos_currentUser");
+      } else if (JSON.stringify(fresh) !== JSON.stringify(currentUser)) {
+        setCurrentUser(fresh);
+        sessionStorage.setItem("pos_currentUser", JSON.stringify(fresh));
+      }
+    }
+  }, [users]);
+
   useEffect(() => {
     const today = getToday();
-    products.forEach((p) => {
+    products.forEach(async (p) => {
       const sisa = p.stokHarian - p.stokTerjual;
       if (sisa <= 0 && p.stokHarian > 0) {
-        setNotifications((prev) => {
-          const existingNotif = prev.find(
-            (n) => n.productId === p.id && n.type === "stok_habis" && n.timestamp.startsWith(today)
-          );
-          if (existingNotif) return prev;
+        const existing = notifications.find(
+          (n) => n.productId === p.id && n.type === "stok_habis" && n.timestamp.startsWith(today)
+        );
+        if (!existing) {
           const newNotif: Notification = {
             id: generateId("NTF"),
             type: "stok_habis",
@@ -272,17 +262,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
             timestamp: new Date().toISOString(),
             read: false,
           };
-          return [newNotif, ...prev];
-        });
+          await setDoc(doc(db, "notifications", newNotif.id), newNotif);
+        }
       }
     });
   }, [products]);
 
-  // ---- AUTH ----
-  const login = (email: string, password: string): AppUser | null => {
+  const login = async (email: string, password: string): Promise<AppUser | null> => {
     const user = users.find((u) => u.email === email && u.password === password);
     if (user) {
       setCurrentUser(user);
+      sessionStorage.setItem("pos_currentUser", JSON.stringify(user));
       return user;
     }
     return null;
@@ -290,41 +280,34 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const logout = () => {
     setCurrentUser(null);
-    localStorage.removeItem("pos_currentUser");
+    sessionStorage.removeItem("pos_currentUser");
   };
 
-  // ---- PRODUCTS ----
-  const addProduct = (p: Omit<Product, "id" | "createdAt" | "stokTerjual">) => {
-    const newProduct: Product = {
-      ...p,
-      id: generateId("PRD"),
-      stokTerjual: 0,
-      createdAt: getToday(),
-    };
-    setProducts((prev) => [...prev, newProduct]);
+  const addProduct = async (p: Omit<Product, "id" | "createdAt" | "stokTerjual">) => {
+    const newProduct: Product = { ...p, id: generateId("PRD"), stokTerjual: 0, createdAt: getToday() };
+    await setDoc(doc(db, "products", newProduct.id), newProduct);
   };
 
-  const editProduct = (id: string, updates: Partial<Product>) => {
-    setProducts((prev) => prev.map((p) => (p.id === id ? { ...p, ...updates } : p)));
+  const editProduct = async (id: string, updates: Partial<Product>) => {
+    const ref = doc(db, "products", id);
+    const snap = await getDoc(ref);
+    if (snap.exists()) await setDoc(ref, { ...snap.data(), ...updates });
   };
 
-  const deleteProduct = (id: string) => {
-    setProducts((prev) => prev.filter((p) => p.id !== id));
+  const deleteProduct = async (id: string) => {
+    await deleteDoc(doc(db, "products", id));
   };
 
-  // ---- STOCK ----
-  const setDailyStock = (productId: string, amount: number) => {
-    setProducts((prev) =>
-      prev.map((p) =>
-        p.id === productId ? { ...p, stokHarian: amount, stokTerjual: 0 } : p
-      )
-    );
+  const setDailyStock = async (productId: string, amount: number) => {
+    const ref = doc(db, "products", productId);
+    const snap = await getDoc(ref);
+    if (snap.exists()) await setDoc(ref, { ...snap.data(), stokHarian: amount, stokTerjual: 0 });
   };
 
-  const resetDailyStock = (productId: string) => {
-    setProducts((prev) =>
-      prev.map((p) => (p.id === productId ? { ...p, stokTerjual: 0 } : p))
-    );
+  const resetDailyStock = async (productId: string) => {
+    const ref = doc(db, "products", productId);
+    const snap = await getDoc(ref);
+    if (snap.exists()) await setDoc(ref, { ...snap.data(), stokTerjual: 0 });
   };
 
   const getSisaStok = (productId: string): number => {
@@ -333,12 +316,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return Math.max(0, product.stokHarian - product.stokTerjual);
   };
 
-  // ---- TRANSACTIONS ----
-  const addTransaction = (
+  const addTransaction = async (
     items: TransactionItem[],
     method: "tunai" | "qris",
     buyerName: string
-  ): Transaction => {
+  ): Promise<Transaction> => {
     const total = items.reduce((sum, item) => sum + item.subtotal, 0);
     const newTrx: Transaction = {
       id: generateId("TRX"),
@@ -350,61 +332,54 @@ export function AppProvider({ children }: { children: ReactNode }) {
       date: getToday(),
       time: getNow(),
     };
-    setTransactions((prev) => [newTrx, ...prev]);
+    await setDoc(doc(db, "transactions", newTrx.id), newTrx);
 
-    // Stok berkurang langsung untuk SEMUA metode (produk sudah diberikan ke pembeli)
-    reduceStock(items);
+    const batch = writeBatch(db);
+    for (const item of items) {
+      const ref = doc(db, "products", item.productId);
+      const snap = await getDoc(ref);
+      if (snap.exists()) {
+        const p = snap.data() as Product;
+        batch.set(ref, { ...p, stokTerjual: p.stokTerjual + item.quantity });
+      }
+    }
+    await batch.commit();
 
     return newTrx;
   };
 
-  const reduceStock = (items: TransactionItem[]) => {
-    setProducts((prev) =>
-      prev.map((p) => {
-        const item = items.find((i) => i.productId === p.id);
-        if (item) {
-          return { ...p, stokTerjual: p.stokTerjual + item.quantity };
+  const editTransaction = async (id: string, updates: Partial<Transaction>) => {
+    const ref = doc(db, "transactions", id);
+    const snap = await getDoc(ref);
+    if (snap.exists()) await setDoc(ref, { ...snap.data(), ...updates });
+  };
+
+  const deleteTransaction = async (id: string) => {
+    const ref = doc(db, "transactions", id);
+    const snap = await getDoc(ref);
+    if (snap.exists()) {
+      const trx = snap.data() as Transaction;
+      const batch = writeBatch(db);
+      for (const item of trx.items) {
+        const pRef = doc(db, "products", item.productId);
+        const pSnap = await getDoc(pRef);
+        if (pSnap.exists()) {
+          const p = pSnap.data() as Product;
+          batch.set(pRef, { ...p, stokTerjual: Math.max(0, p.stokTerjual - item.quantity) });
         }
-        return p;
-      })
-    );
-  };
-
-  const restoreStock = (items: TransactionItem[]) => {
-    setProducts((prev) =>
-      prev.map((p) => {
-        const item = items.find((i) => i.productId === p.id);
-        if (item) {
-          return { ...p, stokTerjual: Math.max(0, p.stokTerjual - item.quantity) };
-        }
-        return p;
-      })
-    );
-  };
-
-  const editTransaction = (id: string, updates: Partial<Transaction>) => {
-    setTransactions((prev) => prev.map((t) => (t.id === id ? { ...t, ...updates } : t)));
-  };
-
-  const deleteTransaction = (id: string) => {
-    const trx = transactions.find((t) => t.id === id);
-    if (trx) {
-      // Selalu kembalikan stok, baik lunas maupun pending
-      restoreStock(trx.items);
+      }
+      batch.delete(ref);
+      await batch.commit();
     }
-    setTransactions((prev) => prev.filter((t) => t.id !== id));
   };
 
-  const confirmQris = (id: string) => {
-    // Hanya ubah status ke lunas, stok sudah dikurangi saat transaksi dibuat
-    setTransactions((prev) =>
-      prev.map((t) => {
-        if (t.id === id && t.status === "pending") {
-          return { ...t, status: "lunas" };
-        }
-        return t;
-      })
-    );
+  const confirmQris = async (id: string) => {
+    const ref = doc(db, "transactions", id);
+    const snap = await getDoc(ref);
+    if (snap.exists()) {
+      const trx = snap.data() as Transaction;
+      if (trx.status === "pending") await setDoc(ref, { ...trx, status: "lunas" });
+    }
   };
 
   const getTodayTransactions = (): Transaction[] => {
@@ -412,8 +387,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return transactions.filter((t) => t.date === today && t.status === "lunas");
   };
 
-  // ---- EXPENSES ----
-  const addExpense = (description: string, amount: number, date: string) => {
+  const addExpense = async (description: string, amount: number, date: string) => {
     const newExpense: Expense = {
       id: generateId("EXP"),
       description,
@@ -421,51 +395,54 @@ export function AppProvider({ children }: { children: ReactNode }) {
       date,
       createdAt: new Date().toISOString(),
     };
-    setExpenses((prev) => [newExpense, ...prev]);
+    await setDoc(doc(db, "expenses", newExpense.id), newExpense);
   };
 
-  const deleteExpense = (id: string) => {
-    setExpenses((prev) => prev.filter((e) => e.id !== id));
+  const deleteExpense = async (id: string) => {
+    await deleteDoc(doc(db, "expenses", id));
   };
 
-  // ---- QRIS ----
-  const updateQris = (config: Partial<QrisConfig>) => {
-    setQrisConfig((prev) => ({ ...prev, ...config }));
+  const updateQris = async (config: Partial<QrisConfig>) => {
+    await setDoc(doc(db, "config", "qris"), { ...qrisConfig, ...config });
   };
 
-  // ---- STORE ----
-  const updateStore = (config: Partial<StoreConfig>) => {
-    setStoreConfig((prev) => ({ ...prev, ...config }));
+  const updateStore = async (config: Partial<StoreConfig>) => {
+    await setDoc(doc(db, "config", "store"), { ...storeConfig, ...config });
   };
 
-  // ---- USERS ----
-  const addUser = (u: Omit<AppUser, "id">) => {
+  const addUser = async (u: Omit<AppUser, "id">) => {
     const newUser: AppUser = { ...u, id: generateId("USR") };
-    setUsers((prev) => [...prev, newUser]);
+    await setDoc(doc(db, "users", newUser.id), newUser);
   };
 
-  const editUser = (id: string, updates: Partial<AppUser>) => {
-    setUsers((prev) => prev.map((u) => (u.id === id ? { ...u, ...updates } : u)));
+  const editUser = async (id: string, updates: Partial<AppUser>) => {
+    const ref = doc(db, "users", id);
+    const snap = await getDoc(ref);
+    if (snap.exists()) await setDoc(ref, { ...snap.data(), ...updates });
   };
 
-  const resetPassword = (id: string, newPassword: string) => {
-    setUsers((prev) =>
-      prev.map((u) => (u.id === id ? { ...u, password: newPassword } : u))
-    );
+  const resetPassword = async (id: string, newPassword: string) => {
+    const ref = doc(db, "users", id);
+    const snap = await getDoc(ref);
+    if (snap.exists()) await setDoc(ref, { ...snap.data(), password: newPassword });
   };
 
-  // ---- NOTIFICATIONS ----
-  const markNotificationRead = (id: string) => {
-    setNotifications((prev) =>
-      prev.map((n) => (n.id === id ? { ...n, read: true } : n))
-    );
+  const markNotificationRead = async (id: string) => {
+    const ref = doc(db, "notifications", id);
+    const snap = await getDoc(ref);
+    if (snap.exists()) await setDoc(ref, { ...snap.data(), read: true });
   };
 
-  const clearNotifications = () => setNotifications([]);
+  const clearNotifications = async () => {
+    const batch = writeBatch(db);
+    notifications.forEach((n) => batch.delete(doc(db, "notifications", n.id)));
+    await batch.commit();
+  };
 
   return (
     <AppContext.Provider
       value={{
+        isLoading,
         currentUser, login, logout,
         products, addProduct, editProduct, deleteProduct,
         setDailyStock, resetDailyStock, getSisaStok,

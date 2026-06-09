@@ -46,6 +46,7 @@
     "date-fns": "3.6.0",
     "embla-carousel-react": "8.6.0",
     "file-saver": "^2.0.5",
+    "firebase": "^12.14.0",
     "input-otp": "1.4.2",
     "lucide-react": "0.487.0",
     "motion": "12.23.24",
@@ -73,8 +74,8 @@
     "vite": "^6.3.5"
   },
   "peerDependencies": {
-    "react": "18.3.1",
-    "react-dom": "18.3.1"
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
   },
   "peerDependenciesMeta": {
     "react": {
@@ -87,6 +88,12 @@
   "pnpm": {
     "overrides": {
       "vite": "6.3.5"
-    }
+    },
+    "onlyBuiltDependencies": [
+      "@firebase/util",
+      "@tailwindcss/oxide",
+      "esbuild",
+      "protobufjs"
+    ]
   }
 }
