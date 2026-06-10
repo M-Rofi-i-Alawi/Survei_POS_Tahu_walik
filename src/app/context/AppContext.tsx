@@ -190,7 +190,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const init = async () => {
       await initializeDefaultData();
 
-      const savedUser = sessionStorage.getItem("pos_currentUser");
+      const savedUser = localStorage.getItem("pos_currentUser");
       if (savedUser) {
         try { setCurrentUser(JSON.parse(savedUser)); } catch { /* ignore */ }
       }
@@ -237,10 +237,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
       const fresh = users.find((u) => u.id === currentUser.id);
       if (!fresh) {
         setCurrentUser(null);
-        sessionStorage.removeItem("pos_currentUser");
+        localStorage.removeItem("pos_currentUser");
       } else if (JSON.stringify(fresh) !== JSON.stringify(currentUser)) {
         setCurrentUser(fresh);
-        sessionStorage.setItem("pos_currentUser", JSON.stringify(fresh));
+        localStorage.setItem("pos_currentUser", JSON.stringify(fresh));
       }
     }
   }, [users]);
@@ -272,7 +272,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const user = users.find((u) => u.email === email && u.password === password);
     if (user) {
       setCurrentUser(user);
-      sessionStorage.setItem("pos_currentUser", JSON.stringify(user));
+      localStorage.setItem("pos_currentUser", JSON.stringify(user));
       return user;
     }
     return null;
@@ -280,7 +280,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const logout = () => {
     setCurrentUser(null);
-    sessionStorage.removeItem("pos_currentUser");
+    localStorage.removeItem("pos_currentUser");
   };
 
   const addProduct = async (p: Omit<Product, "id" | "createdAt" | "stokTerjual">) => {
