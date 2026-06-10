@@ -88,20 +88,20 @@ export default function StokPage() {
               {isEditing ? (
                 <div className="space-y-2">
                   <label className="block text-sm font-medium">Set Stok Baru (pcs)</label>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    value={editValue}
+                    onChange={(e) => { const v = e.target.value.replace(/[^0-9]/g, ""); setEditValue(v); }}
+                    className="w-full px-4 py-3 bg-muted/50 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#FBAA31]/30 text-lg font-semibold"
+                    autoFocus
+                    placeholder="0"
+                  />
                   <div className="flex gap-2">
-                    <input
-                      type="text"
-                      inputMode="numeric"
-                      value={editValue}
-                      onChange={(e) => { const v = e.target.value.replace(/[^0-9]/g, ""); setEditValue(v); }}
-                      className="flex-1 px-4 py-2 bg-muted/50 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#FBAA31]/30"
-                      autoFocus
-                      placeholder="0"
-                    />
-                    <button onClick={() => handleSetStok(product.id)} className="px-4 py-2 bg-gradient-to-r from-[#FBAA31] to-[#E87428] text-white font-medium rounded-xl hover:shadow-lg transition-all">
-                      <Check className="w-5 h-5" />
+                    <button onClick={() => setEditingId(null)} className="flex-1 py-2 bg-muted rounded-xl hover:bg-muted/70 transition-all text-sm font-medium">Batal</button>
+                    <button onClick={() => handleSetStok(product.id)} className="flex-1 py-2 bg-gradient-to-r from-[#FBAA31] to-[#E87428] text-white font-medium rounded-xl hover:shadow-lg transition-all flex items-center justify-center gap-2 text-sm">
+                      <Check className="w-4 h-4" />Simpan
                     </button>
-                    <button onClick={() => setEditingId(null)} className="px-4 py-2 bg-muted rounded-xl hover:bg-muted/70 transition-all">Batal</button>
                   </div>
                 </div>
               ) : (
